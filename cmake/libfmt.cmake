@@ -1,31 +1,26 @@
-INCLUDE (CheckCXXSourceRuns)
-INCLUDE (ExternalProject)
+INCLUDE(CheckCXXSourceRuns)
+INCLUDE(ExternalProject)
 
 SET(WITH_LIBFMT "auto" CACHE STRING
    "Which libfmt to use (possible values are 'bundled', 'system', or 'auto')")
 
 MACRO(BUNDLE_LIBFMT)
+  # Set the directory where libfmt is expected to be located
   SET(dir "${CMAKE_BINARY_DIR}/extra/libfmt")
-  SET(LIBFMT_INCLUDE_DIR "${dir}/src/libfmt/include")
+  SET(LIBFMT_INCLUDE_DIR "${dir}/include")
 
-  IF(CMAKE_VERSION VERSION_GREATER "3.0")
-    SET(fmt_byproducts BUILD_BYPRODUCTS ${LIBFMT_INCLUDE_DIR}/fmt/format-inl.h)
+  # Assuming that libfmt is already extracted and built in the specified directory
+  IF(NOT EXISTS "${LIBFMT_INCLUDE_DIR}/fmt/format.h")
+    MESSAGE(FATAL_ERROR "The specified directory does not contain the expected libfmt headers.")
   ENDIF()
 
-  ExternalProject_Add(
-    libfmt
-    PREFIX   "${dir}"
-    URL      "https://github.com/fmtlib/fmt/releases/download/11.0.1/fmt-11.0.1.zip"
-    URL_MD5  5f3915e2eff60e7f70c558120592100d
-    INSTALL_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    ${fmt_byproducts}
-  )
+  # Set the include directory for libfmt
+  INCLUDE_DIRECTORIES(${LIBFMT_INCLUDE_DIR})
 ENDMACRO()
 
 MACRO (CHECK_LIBFMT)
   IF(WITH_LIBFMT STREQUAL "system" OR WITH_LIBFMT STREQUAL "auto")
+    # Assume libfmt is provided in the specified directory
     SET(CMAKE_REQUIRED_INCLUDES ${LIBFMT_INCLUDE_DIR})
     CHECK_CXX_SOURCE_RUNS(
     "#define FMT_STATIC_THOUSANDS_SEPARATOR ','
@@ -39,9 +34,10 @@ MACRO (CHECK_LIBFMT)
      }" HAVE_SYSTEM_LIBFMT)
     SET(CMAKE_REQUIRED_INCLUDES)
   ENDIF()
+  
   IF(NOT HAVE_SYSTEM_LIBFMT OR WITH_LIBFMT STREQUAL "bundled")
     IF (WITH_LIBFMT STREQUAL "system")
-      MESSAGE(FATAL_ERROR "system libfmt library is not found or unusable")
+      MESSAGE(FATAL_ERROR "System libfmt library is not found or unusable")
     ENDIF()
     BUNDLE_LIBFMT()
   ELSE()
